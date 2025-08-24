@@ -1,7 +1,5 @@
 import { useState, useMemo } from 'react';
 
-
-// A reusable component for the '+' and '-' buttons
 const ControlButton = ({ onClick, children, disabled }) => (
     <button
         onClick={onClick}
@@ -12,59 +10,53 @@ const ControlButton = ({ onClick, children, disabled }) => (
     </button>
 );
 
-// --- Main Component ---
 const PlaceBid = () => {
-    // --- State Management ---
     const [selectedBid, setSelectedBid] = useState('yes');
-    const [price, setPrice] = useState(5.00);
     const [quantity, setQuantity] = useState(1);
 
-    // --- Constants and Configuration ---
-    const marketPrices = { yes: 5.00, no: 5.00 };
+    const marketPrices = { yes: 4.00, no: 5.00 };
     const FEE_PERCENTAGE = 0.10;
-    const TOTAL_VALUE_PER_SHARE = 5.00;
-    const MIN_PRICE = 1;
-    const MAX_PRICE = 9;
+    const TOTAL_VALUE_PER_SHARE = 10.00;
+    const USER_BALANCE = 50.00;
 
-    // --- Event Handlers ---
     const handleBidSelect = (bidType) => {
         setSelectedBid(bidType);
-        setPrice(marketPrices[bidType] * quantity);
+        setQuantity(1);
     };
+
+    const { pricePerShare, youPay, youGet, maxAffordableQuantity } = useMemo(() => {
+        const currentPricePerShare = marketPrices[selectedBid];
+        const affordableQty = currentPricePerShare > 0 ? Math.floor(USER_BALANCE / currentPricePerShare) : 0;
+
+        const payAmount = currentPricePerShare * quantity;
+        const totalReturnValue = TOTAL_VALUE_PER_SHARE * quantity;
+        const potentialWinnings = totalReturnValue - payAmount;
+        const feeOnWinnings = potentialWinnings > 0 ? potentialWinnings * FEE_PERCENTAGE : 0;
+        const getAmount = totalReturnValue - feeOnWinnings;
+
+        return {
+            pricePerShare: currentPricePerShare,
+            youPay: payAmount.toFixed(2),
+            youGet: getAmount.toFixed(2),
+            maxAffordableQuantity: affordableQty,
+        };
+    }, [selectedBid, quantity, USER_BALANCE]);
 
     const handleQuantityChange = (increment) => {
         setQuantity(prev => {
             const newValue = prev + increment;
-            return newValue >= 1 ? newValue : prev;
+            return Math.max(1, Math.min(newValue, maxAffordableQuantity));
         });
-        setPrice(marketPrices[selectedBid] * quantity);
     };
-
-    // Updated to increment/decrement price by whole numbers
-    const handlePriceChange = (increment) => {
-        handleQuantityChange(increment);
-    };
-
-    // --- Derived State & Calculations (useMemo) ---
-    const { youPay, youGet } = useMemo(() => {
-        const payAmount = price * quantity;
-        const potentialWinnings = (TOTAL_VALUE_PER_SHARE * quantity) - payAmount;
-        const feeOnWinnings = potentialWinnings * FEE_PERCENTAGE;
-        const getAmount = payAmount + (potentialWinnings - feeOnWinnings);
-        return {
-            youPay: payAmount.toFixed(2),
-            youGet: getAmount.toFixed(2),
-        };
-    }, [price, quantity]);
 
     const handlePlaceOrder = () => {
-        console.log(`Order placed for ${quantity} share(s) of "${selectedBid.toUpperCase()}" at ₹${price.toFixed(2)} each.`);
+        console.log(`Order placed for ${quantity} share(s) of "${selectedBid.toUpperCase()}" at ₹${pricePerShare.toFixed(2)} each.`);
     };
 
     return (
         <div className="w-80 p-4 rounded-lg bg-slate-800 text-slate-300 font-sans shadow-lg border border-slate-700">
             <h2 className="text-lg font-semibold text-white">Place Your Bid</h2>
-            <p className="text-sm text-slate-400 mb-4">Choose your prediction and stake amount</p>
+            <p className="text-sm text-slate-400 mb-4">Your Balance: ₹{USER_BALANCE.toFixed(2)}</p>
 
             <div className="grid grid-cols-2 gap-3 mb-4">
                 <button
@@ -86,22 +78,22 @@ const PlaceBid = () => {
             <div className="mb-4">
                 <label className="block text-sm font-medium mb-1 text-slate-400">Price</label>
                 <div className="flex items-center justify-between p-1 bg-slate-900 rounded-lg">
-                    <ControlButton onClick={() => handlePriceChange(-1)} disabled={price <= MIN_PRICE}>-</ControlButton>
-                    <span className="text-lg font-semibold text-white">₹{price.toFixed(2)}</span>
-                    <ControlButton onClick={() => handlePriceChange(1)} disabled={price >= MAX_PRICE}>+</ControlButton>
+                    <ControlButton onClick={() => handleQuantityChange(-1)} disabled={quantity <= 1}>-</ControlButton>
+                    <span className="text-lg font-semibold text-white">₹{youPay}</span>
+                    {/* Updated: Disabled state is now dynamic */}
+                    <ControlButton onClick={() => handleQuantityChange(1)} disabled={quantity >= maxAffordableQuantity}>+</ControlButton>
                 </div>
             </div>
 
             <div className="mb-4">
-                <label className="block text-sm font-medium mb-1 text-slate-400">Quantity</label>
+                <label className="block text-sm font-medium mb-1 text-slate-400">Quantity (Max: {maxAffordableQuantity})</label>
                 <div className="flex items-center justify-between p-1 bg-slate-900 rounded-lg">
                     <ControlButton onClick={() => handleQuantityChange(-1)} disabled={quantity <= 1}>-</ControlButton>
                     <span className="text-lg font-semibold text-white">{quantity}</span>
-                    <ControlButton onClick={() => handleQuantityChange(1)}>+</ControlButton>
+                    {/* Updated: Disabled state is now dynamic */}
+                    <ControlButton onClick={() => handleQuantityChange(1)} disabled={quantity >= maxAffordableQuantity}>+</ControlButton>
                 </div>
             </div>
-
-            <p className="text-sm text-slate-400 mb-4">Will be pending: {quantity} shares</p>
 
             <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
@@ -116,13 +108,13 @@ const PlaceBid = () => {
 
             <button
                 onClick={handlePlaceOrder}
-                className="w-full py-3 rounded-lg bg-slate-600 text-white font-semibold hover:bg-slate-500 transition-colors"
+                disabled={parseFloat(youPay) > USER_BALANCE || maxAffordableQuantity < 1}
+                className="w-full py-3 rounded-lg bg-slate-600 text-white font-semibold hover:bg-slate-500 transition-colors disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed"
             >
-                Place Order @ ₹{price.toFixed(2) * quantity}
+                Place Order for ₹{youPay}
             </button>
         </div>
     );
 };
 
 export default PlaceBid;
-
