@@ -5,9 +5,11 @@ const PlaceBid = ({ market, userId }) => {
     const [price, setPrice] = useState(5.0);
     const [quantity, setQuantity] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
+    // New state to hold error messages
+    const [errorMessage, setErrorMessage] = useState('');
 
     const handlePriceChange = (amount) => {
-        setPrice(prev => Math.max(0.1, Math.min(9.9, parseFloat((prev + amount).toFixed(1)))));
+        setPrice(prev => Math.max(0.5, Math.min(9.5, parseFloat((prev + amount).toFixed(1)))));
     };
 
     const handleQuantityChange = (amount) => {
@@ -16,8 +18,10 @@ const PlaceBid = ({ market, userId }) => {
 
     const handleSubmit = async () => {
         setIsLoading(true);
+        setErrorMessage(''); // Clear previous errors
+
         try {
-            await fetch('http://localhost:3001/api/orders/place', {
+            const response = await fetch('http://localhost:3001/api/orders/place', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -28,8 +32,23 @@ const PlaceBid = ({ market, userId }) => {
                     quantity
                 })
             });
+
+            // Check if the server responded with an error
+            if (!response.ok) {
+                // Get the error message from the server's response body
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Something went wrong');
+            }
+
+            // If successful, you can handle the success case here
+            // For example, show a success message or clear the form
+            console.log('Order placed successfully!');
+
+
         } catch (error) {
             console.error("Failed to place order:", error);
+            // Set the error message to display it in the UI
+            setErrorMessage(error.message);
         } finally {
             setIsLoading(false);
         }
@@ -58,6 +77,13 @@ const PlaceBid = ({ market, userId }) => {
                 <div className="flex justify-between"><span>You Get (after 10% fee):</span> <span className="font-bold text-white">₹{(potentialReturn * 0.9).toFixed(2)}</span></div>
             </div>
 
+            {/* Display the error message here */}
+            {errorMessage && (
+                <div className="text-red-400 bg-red-900/50 p-3 rounded-md text-center text-sm">
+                    {errorMessage}
+                </div>
+            )}
+
             <button onClick={handleSubmit} disabled={isLoading} className="w-full bg-slate-600 hover:bg-slate-500 font-bold py-3 rounded-lg transition disabled:bg-gray-500">
                 {isLoading ? 'Placing...' : `Place Order @ ₹${totalCost}`}
             </button>
@@ -69,9 +95,9 @@ const InputStepper = ({ label, value, onStep }) => (
     <div>
         <label className="text-sm text-gray-400">{label}</label>
         <div className="flex items-center justify-between bg-gray-900 rounded-md p-1 mt-1">
-            <button onClick={() => onStep(- (label === 'Price' ? 0.1 : 1))} className="w-10 h-10 text-xl font-bold bg-gray-700 rounded">-</button>
+            <button onClick={() => onStep(- (label === 'Price' ? 0.5 : 1))} className="w-10 h-10 text-xl font-bold bg-gray-700 rounded">-</button>
             <span className="text-lg font-bold text-white">{value}</span>
-            <button onClick={() => onStep(label === 'Price' ? 0.1 : 1)} className="w-10 h-10 text-xl font-bold bg-gray-700 rounded">+</button>
+            <button onClick={() => onStep(label === 'Price' ? 0.5 : 1)} className="w-10 h-10 text-xl font-bold bg-gray-700 rounded">+</button>
         </div>
     </div>
 );

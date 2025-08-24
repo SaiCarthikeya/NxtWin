@@ -13,19 +13,11 @@ const API_URL = 'http://localhost:3001';
 
 const MarketView = () => {
     const [socket, setSocket] = useState(null);
-    const [user, setUser] = useState({ _id: '65ba362145b41214e616259e', virtual_balance: 1000 }); // Hardcoded user ID for demo
+    // Hardcoded user ID for demo - MAKE SURE THIS MATCHES YOUR DB
+    const [user, setUser] = useState({ _id: '664f617a80cc827a2567342a', virtual_balance: 5000 });
     const [market, setMarket] = useState(null);
     const [orderBook, setOrderBook] = useState({ YES: [], NO: [] });
     const [userOrders, setUserOrders] = useState([]);
-
-    const fetchMarketData = useCallback(async (marketId) => {
-        try {
-            const res = await fetch(`${API_URL}/api/markets/${marketId}`);
-            setMarket(await res.json());
-        } catch (error) {
-            console.error("Failed to fetch market data:", error);
-        }
-    }, []);
 
     const fetchOrderBook = useCallback(async (marketId) => {
         try {
@@ -45,26 +37,35 @@ const MarketView = () => {
         }
     }, []);
 
-    const fetchInitialData = async () => {
-        const marketsRes = await fetch(`${API_URL}/api/markets`);
-        const markets = await marketsRes.json();
-        if (markets.length > 0) {
-            const currentMarket = markets[0];
-            setMarket(currentMarket);
-            await Promise.all([
-                fetchOrderBook(currentMarket._id),
-                fetchUserOrders(currentMarket._id, user._id)
-            ]);
+    const fetchInitialData = useCallback(async (userId) => {
+        try {
+            const marketsRes = await fetch(`${API_URL}/api/markets`);
+            const markets = await marketsRes.json();
+
+            const userRes = await fetch(`${API_URL}/api/users/${userId}`);
+            const userData = await userRes.json();
+            setUser(userData);
+
+            if (markets.length > 0) {
+                const currentMarket = markets[0];
+                setMarket(currentMarket);
+                await Promise.all([
+                    fetchOrderBook(currentMarket._id),
+                    fetchUserOrders(currentMarket._id, userId)
+                ]);
+            }
+        } catch (error) {
+            console.error("Failed to load initial data", error);
         }
-    };
+    }, [fetchOrderBook, fetchUserOrders]);
 
 
     useEffect(() => {
         const newSocket = io(API_URL);
         setSocket(newSocket);
-        fetchInitialData();
+        fetchInitialData(user._id);
         return () => newSocket.close();
-    }, []);
+    }, [user._id, fetchInitialData]);
 
     useEffect(() => {
         if (!socket || !market) return;
@@ -72,16 +73,23 @@ const MarketView = () => {
         socket.on('connect', () => console.log('Socket connected!'));
         socket.on('orderbook:update', (data) => {
             if (data.marketId === market._id) {
-                console.log('Order book updating...');
                 fetchOrderBook(market._id);
                 fetchUserOrders(market._id, user._id);
             }
         });
 
+        // ADD THIS LISTENER TO UPDATE THE BALANCE
+        socket.on('user:update', (data) => {
+            if (data.userId === user._id) {
+                setUser(prevUser => ({ ...prevUser, virtual_balance: data.newBalance }));
+            }
+        });
+
         return () => {
             socket.off('orderbook:update');
+            socket.off('user:update'); // Clean up the listener
         };
-    }, [socket, market, user, fetchOrderBook, fetchUserOrders]);
+    }, [socket, market, user._id, fetchOrderBook, fetchUserOrders]);
 
 
     if (!market) {
