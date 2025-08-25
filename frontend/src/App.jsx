@@ -13,6 +13,7 @@ const App = () => {
     }
   };
 
+  // Event Detail Page
   return (
     <div>
       {renderPage()}
