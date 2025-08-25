@@ -16,12 +16,26 @@ connectDB();
 
 const app = express();
 const httpServer = createServer(app);
+
+
+const allowedOrigins = [
+    "http://localhost:5173",         // Your local frontend for development
+    "https://nxt-win-ten.vercel.app"  // Your deployed frontend on Vercel
+];
+
+const corsOptions = {
+    origin: allowedOrigins
+};
+
+// Apply the CORS options to both Express and Socket.IO
+app.use(cors(corsOptions));
+
 const io = new Server(httpServer, {
-  cors: { origin: "http://localhost:5173", methods: ["GET", "POST"] }
+  cors: corsOptions
 });
 
+
 app.set('io', io);
-app.use(cors());
 app.use(express.json());
 
 
