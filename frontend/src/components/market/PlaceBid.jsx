@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
+import { useAuth } from '@clerk/clerk-react'; // 1. Import the useAuth hook
 
 const PlaceBid = ({ market, userId }) => {
+    const { getToken } = useAuth(); // 2. Get the getToken function from the hook
     const [selectedOption, setSelectedOption] = useState('YES');
     const [price, setPrice] = useState(5.0);
     const [quantity, setQuantity] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
-    // New state to hold error messages
     const [errorMessage, setErrorMessage] = useState('');
 
     const handlePriceChange = (amount) => {
@@ -18,12 +19,18 @@ const PlaceBid = ({ market, userId }) => {
 
     const handleSubmit = async () => {
         setIsLoading(true);
-        setErrorMessage(''); // Clear previous errors
+        setErrorMessage('');
 
         try {
+            const token = await getToken(); // 3. Get the session token from Clerk
+
             const response = await fetch('http://localhost:3001/api/orders/place', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    // 4. Add the token to the Authorization header
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     userId,
                     marketId: market._id,
@@ -33,21 +40,15 @@ const PlaceBid = ({ market, userId }) => {
                 })
             });
 
-            // Check if the server responded with an error
             if (!response.ok) {
-                // Get the error message from the server's response body
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'Something went wrong');
             }
 
-            // If successful, you can handle the success case here
-            // For example, show a success message or clear the form
             console.log('Order placed successfully!');
-
 
         } catch (error) {
             console.error("Failed to place order:", error);
-            // Set the error message to display it in the UI
             setErrorMessage(error.message);
         } finally {
             setIsLoading(false);
@@ -77,7 +78,6 @@ const PlaceBid = ({ market, userId }) => {
                 <div className="flex justify-between"><span>You Get (after 10% fee):</span> <span className="font-bold text-white">₹{(potentialReturn * 0.9).toFixed(2)}</span></div>
             </div>
 
-            {/* Display the error message here */}
             {errorMessage && (
                 <div className="text-red-400 bg-red-900/50 p-3 rounded-md text-center text-sm">
                     {errorMessage}

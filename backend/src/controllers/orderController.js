@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import Market from '../models/market.model.js';
 import User from '../models/user.model.js';
 import Order from '../models/order.model.js';
-import Holding from '../models/holding.model.js';
 
 const MAX_PAYOUT = 10;
 
@@ -14,78 +13,78 @@ export const placeOrder = async (req, res) => {
 
     try {
         const market = await Market.findById(marketId).session(session);
-        const user = await User.findById(userId).session(session);
+        const taker = await User.findById(userId).session(session);
 
         if (!market || market.status !== 'OPEN') throw new Error('Market is not open.');
-        if (!user) throw new Error('User not found.');
-        
-        const totalPotentialCost = quantity * price;
-        if (user.virtual_balance < totalPotentialCost) {
-            throw new Error('Insufficient funds to cover the entire potential order.');
-        }
+        if (!taker) throw new Error('User not found.');
 
         const opposingOutcome = outcome === 'YES' ? 'NO' : 'YES';
-        const matchingPrice = MAX_PAYOUT - price;
+        const matchingPrice = parseFloat((MAX_PAYOUT - price).toFixed(2));
 
+        // --- THIS IS THE FIX ---
+        // The query now looks for an EXACT price match, not less than or equal to.
         const matchingOrders = await Order.find({
             market: marketId,
             outcome: opposingOutcome,
-            price: { $gte: matchingPrice },
+            price: matchingPrice, // Changed from { $lte: matchingPrice }
             status: { $in: ['OPEN', 'PARTIALLY_FILLED'] },
-        }).sort({ price: -1, createdAt: 1 }).session(session);
+        }).sort({ createdAt: 1 }).session(session); // Sort by oldest first
 
-        let quantityToFill = quantity;
+        let quantityToFill = Number(quantity);
 
-        for (const match of matchingOrders) {
+        for (const makerOrder of matchingOrders) {
             if (quantityToFill === 0) break;
 
-            const availableQuantity = match.quantity - match.quantityFilled;
+            const maker = await User.findById(makerOrder.user).session(session);
+            const availableQuantity = makerOrder.quantity - makerOrder.quantityFilled;
             const tradeQuantity = Math.min(quantityToFill, availableQuantity);
-            const tradePrice = MAX_PAYOUT - match.price;
-            const tradeValue = tradeQuantity * tradePrice;
             
-            const sellerUser = await User.findById(match.user).session(session);
+            const takerTradeValue = tradeQuantity * price;
+            const makerTradeValue = tradeQuantity * makerOrder.price;
 
-            // Transfer funds from buyer to seller
-            await User.findByIdAndUpdate(user._id, { $inc: { virtual_balance: -tradeValue } }, { session });
-            await User.findByIdAndUpdate(sellerUser._id, { $inc: { virtual_balance: tradeValue } }, { session });
+            if (taker.virtual_balance < takerTradeValue) {
+                throw new Error('Insufficient funds for this trade.');
+            }
+
+            // Execute Trade
+            await User.findByIdAndUpdate(taker._id, { $inc: { virtual_balance: -takerTradeValue } }, { session });
+            await User.findByIdAndUpdate(maker._id, { $inc: { virtual_balance: makerTradeValue } }, { session });
             
-            // Transfer shares
-            await Holding.findOneAndUpdate({ user: user._id, market: marketId, outcome }, { $inc: { shares: tradeQuantity } }, { upsert: true, new: true, session });
-            await Holding.findOneAndUpdate({ user: sellerUser._id, market: marketId, outcome: opposingOutcome }, { $inc: { shares: -tradeQuantity } }, { upsert: true, new: true, session });
+            // Update the maker's (existing) order
+            makerOrder.quantityFilled += tradeQuantity;
+            makerOrder.status = makerOrder.quantityFilled >= makerOrder.quantity ? 'FILLED' : 'PARTIALLY_FILLED';
+            await makerOrder.save({ session });
             
-            // Update the matched order
-            match.quantityFilled += tradeQuantity;
-            match.status = match.quantityFilled >= match.quantity ? 'FILLED' : 'PARTIALLY_FILLED';
-            await match.save({ session });
+            // Create a FILLED order for the taker's history
+            const takerFilledOrder = new Order({ user: taker._id, market: marketId, outcome, price, quantity: tradeQuantity, quantityFilled: tradeQuantity, status: 'FILLED' });
+            await takerFilledOrder.save({ session });
             
             quantityToFill -= tradeQuantity;
-
-            // Create a "FILLED" order record for the buyer's history
-            const filledOrder = new Order({ user: user._id, market: marketId, outcome, price: tradePrice, quantity: tradeQuantity, quantityFilled: tradeQuantity, status: 'FILLED' });
-            await filledOrder.save({ session });
         }
 
-        // If part of the order remains unmatched, create a new open order
+        // If part of the order remains unmatched, create a new OPEN order
         if (quantityToFill > 0) {
             const costOfNewOrder = quantityToFill * price;
-            
-            // Deduct cost for the new open order from user's balance
-            await User.findByIdAndUpdate(user._id, { $inc: { virtual_balance: -costOfNewOrder } }, { session });
-            
-            // Give the user the opposing shares for their open order
-            await Holding.findOneAndUpdate({ user: user._id, market: marketId, outcome: opposingOutcome }, { $inc: { shares: quantityToFill } }, { upsert: true, new: true, session });
+            if (taker.virtual_balance < costOfNewOrder) throw new Error('Insufficient funds for remaining part of order.');
 
-            const newOrder = new Order({ user: userId, market: marketId, outcome, price, quantity: quantityToFill, status: 'OPEN' });
-            await newOrder.save({ session });
+            await User.findByIdAndUpdate(taker._id, { $inc: { virtual_balance: -costOfNewOrder } }, { session });
+            const newOpenOrder = new Order({ user: userId, market: marketId, outcome, price, quantity: quantityToFill, status: 'OPEN' });
+            await newOpenOrder.save({ session });
         }
 
         await session.commitTransaction();
 
         const io = req.app.get('io');
-        const updatedUser = await User.findById(userId);
+        const updatedTaker = await User.findById(userId);
         io.emit('orderbook:update', { marketId });
-        io.emit('user:update', { userId: user._id, newBalance: updatedUser.virtual_balance });
+        io.emit('user:update', { userId: updatedTaker._id, newBalance: updatedTaker.virtual_balance });
+        
+        for (const makerOrder of matchingOrders) {
+            if(makerOrder.isModified()){
+                const updatedMaker = await User.findById(makerOrder.user);
+                io.emit('user:update', { userId: updatedMaker._id, newBalance: updatedMaker.virtual_balance });
+            }
+        }
 
         res.status(201).json({ success: true, message: 'Order processed successfully.' });
 
@@ -98,6 +97,7 @@ export const placeOrder = async (req, res) => {
     }
 };
 
+// ... keep getOrderBookForMarket and getMyOrdersForMarket
 export const getOrderBookForMarket = async (req, res) => {
     try {
         const { marketId } = req.params;
