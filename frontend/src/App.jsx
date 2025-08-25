@@ -1,13 +1,16 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { SignedIn, UserButton, SignIn, SignUp, useUser } from '@clerk/clerk-react';
+import { SignedIn, SignIn, SignUp, useUser } from '@clerk/clerk-react';
 
+// Component & Page Imports
+import Header from './components/Header'; // Import the separate Header component
 import MarketView from './pages/MarketView';
 import MarketsListPage from './pages/MarketsListPage';
 import LoadingSpinner from './components/LoadingSpinner';
 import AuthCallback from './pages/AuthCallback';
 import NotFoundPage from './pages/NotFoundPage';
 import PostAuthHandler from './components/PostAuthHandler';
+import MyOrdersPage from './pages/MyOrdersPage';
 
 // This component protects routes that require a user to be logged in
 const ProtectedRoute = ({ children }) => {
@@ -15,18 +18,6 @@ const ProtectedRoute = ({ children }) => {
   if (!isLoaded) return <LoadingSpinner />;
   return isSignedIn ? children : <Navigate to="/sign-in" replace />;
 };
-
-// The main header for the application
-const Header = () => (
-  <header className="bg-gray-800 p-4 flex justify-between items-center border-b border-gray-700 sticky top-0 z-50">
-    <a href="/" className="text-2xl font-bold text-white">NxtWin</a>
-    <div>
-      <SignedIn>
-        <UserButton afterSignOutUrl="/" />
-      </SignedIn>
-    </div>
-  </header>
-);
 
 // Visually enhanced Sign-In Page
 const SignInPage = () => (
@@ -87,6 +78,13 @@ const App = () => {
               <ProtectedRoute>
                 <PostAuthHandler>
                   <MarketView />
+                </PostAuthHandler>
+              </ProtectedRoute>
+            } />
+            <Route path="/my-orders" element={
+              <ProtectedRoute>
+                <PostAuthHandler>
+                  <MyOrdersPage />
                 </PostAuthHandler>
               </ProtectedRoute>
             } />

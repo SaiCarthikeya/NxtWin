@@ -4,6 +4,27 @@ import User from '../models/user.model.js';
 import Order from '../models/order.model.js';
 
 const MAX_PAYOUT = 10;
+export const getAllMyOrders = async (req, res) => {
+    try {
+        // Find the user in our database using the clerkId from the authenticated session
+        const user = await User.findOne({ clerkId: req.auth.userId });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Find all orders for that user and populate the 'market' field
+        // to include details like the market question.
+        const orders = await Order.find({ user: user._id })
+            .populate('market', 'question') // This line adds the market question to each order
+            .sort({ createdAt: -1 });
+
+        res.json(orders);
+    } catch (error) {
+        console.error("Error in getAllMyOrders:", error);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
 
 export const placeOrder = async (req, res) => {
     const { userId, marketId, optionChosen, quantity, price } = req.body;

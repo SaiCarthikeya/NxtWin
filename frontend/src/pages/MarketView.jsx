@@ -9,7 +9,7 @@ import EventDetails from '../components/market/EventDetails';
 import PlaceBid from '../components/market/PlaceBid';
 import OrderBook from '../components/market/OrderBook';
 import UserOrders from '../components/market/UserOrders';
-import MarketStats from '../components/market/MarketStats';
+// import MarketStats from '../components/market/MarketStats';
 
 const API_URL = 'http://localhost:3001';
 
@@ -119,7 +119,7 @@ const MarketView = () => {
             </div>
             <div className="space-y-6">
                 <PlaceBid market={market} userId={user._id} />
-                <MarketStats market={market} orderBook={orderBook} />
+                {/* <MarketStats market={market} orderBook={orderBook} /> */}
             </div>
         </div>
     );
