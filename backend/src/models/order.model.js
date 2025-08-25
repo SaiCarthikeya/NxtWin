@@ -32,10 +32,23 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['OPEN', 'FILLED', 'CANCELLED'],
+    // Added PARTIALLY_FILLED to the enum
+    enum: ['OPEN', 'FILLED', 'CANCELLED', 'PARTIALLY_FILLED'],
     default: 'OPEN',
   },
 }, { timestamps: true });
+
+// --- ADD THESE INDEXES ---
+
+// 1. Compound Index for the Matching Engine
+// This is the most important index. It makes finding matching orders for a trade extremely fast.
+// It tells Mongo to pre-sort orders by market, then outcome, then status, and finally by price.
+orderSchema.index({ market: 1, outcome: 1, status: 1, price: 1 });
+
+// 2. Index for Finding a User's Orders
+// This speeds up fetching all orders for the "Your Orders" page.
+orderSchema.index({ user: 1 });
+
 
 const Order = mongoose.model('Order', orderSchema);
 

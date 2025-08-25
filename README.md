@@ -1,193 +1,129 @@
-# NxtWin - Prediction Market Platform
+# NxtWin - A Real-Time Prediction Market Platform
 
-A real-time prediction market platform built with React, Node.js, Express, Socket.io, and SQLite. Users can place bets on binary outcomes and see real-time updates as the market moves.
+NxtWin is a modern, real-time prediction market platform built on the MERN stack (MongoDB, Express, React, Node.js). It features a robust order book matching engine and secure user authentication powered by Clerk. Users can trade on the outcomes of real-world events using virtual currency.
 
 ## Features
 
-- **Real-time Trading**: Live updates using WebSocket connections
-- **Binary Prediction Markets**: YES/NO outcomes with dynamic pricing
-- **Virtual Currency**: Users trade with virtual coins
-- **Dynamic Pricing**: Prices adjust based on trading volume using a bonding curve
-- **Market Resolution**: Admin-controlled market resolution with automatic payout distribution
-- **Responsive UI**: Modern, mobile-friendly interface built with Tailwind CSS
+-   **Secure Authentication**: Full email/password and social login (Google) powered by Clerk.
+-   **Order Book Trading**: An event-driven matching engine executes trades instantly when orders match.
+-   **Real-time Updates**: Live market data and user balance updates using Socket.IO.
+-   **Binary Prediction Markets**: Trade on YES/NO outcomes for any event.
+-   **Virtual Currency**: All users start with a virtual balance to trade with.
+-   **Complete Trade History**: Users can view a full history of their open and filled orders.
+-   **Responsive UI**: A sleek, modern interface built with Vite, React, and Tailwind CSS.
 
+---
 ## System Architecture
 
-### Backend (Node.js + Express + Socket.io)
-- **Database**: SQLite with tables for users, markets, and bids
-- **Real-time Communication**: Socket.io for instant updates
-- **API Endpoints**: RESTful API for market operations
-- **Pricing Model**: Simple bonding curve for dynamic pricing
+### **Backend (Node.js + Express)**
+-   **Database**: MongoDB Atlas for a scalable, cloud-hosted database.
+-   **Authentication**: Clerk handles user management, session control, and JWT-based API protection.
+-   **Real-time Communication**: Socket.IO for instant broadcasting of order book and user balance updates.
+-   **API**: A RESTful API for market data, order placement, and user information.
 
-### Frontend (React + Tailwind CSS)
-- **Real-time Updates**: WebSocket integration for live data
-- **Interactive Trading**: Intuitive bid placement interface
-- **Responsive Design**: Works on all device sizes
-- **State Management**: React hooks for local state
+### **Frontend (React + Vite)**
+-   **Framework**: Built with Vite for a fast and modern development experience.
+-   **UI**: Styled with Tailwind CSS for a responsive and clean design.
+-   **Routing**: `react-router-dom` for multi-page navigation.
+-   **Authentication UI**: Utilizes pre-built, customizable components from Clerk for a seamless login/signup experience.
 
-## Database Schema
+---
+## Database Schema (MongoDB Collections)
 
-### Users Table
-- `id`: Unique user identifier
-- `username`: User's display name
-- `virtual_balance`: Available virtual coins
+### **`users`**
+-   `clerkId`: String (Unique ID from Clerk)
+-   `username`: String
+-   `email`: String (Unique)
+-   `virtual_balance`: Number
 
-### Markets Table
-- `id`: Unique market identifier
-- `question`: Prediction question text
-- `status`: Market state (open, closed, resolved_yes, resolved_no)
-- `yes_price`/`no_price`: Current prices for outcomes
-- `yes_volume`/`no_volume`: Total coins bet on each outcome
+### **`markets`**
+-   `question`: String
+-   `description`: String
+-   `status`: String ('OPEN' or 'RESOLVED')
+-   `outcome`: String ('YES', 'NO', or 'UNDETERMINED')
 
-### Bids Table
-- `id`: Unique bid identifier
-- `user_id`: Reference to user
-- `market_id`: Reference to market
-- `option_chosen`: YES or NO
-- `quantity`: Number of shares
-- `bid_price`: Price per share at time of bid
+### **`orders`**
+-   `user`: ObjectId (ref: 'User')
+-   `market`: ObjectId (ref: 'Market')
+-   `outcome`: String ('YES' or 'NO')
+-   `price`: Number
+-   `quantity`: Number
+-   `quantityFilled`: Number
+-   `status`: String ('OPEN', 'FILLED', 'PARTIALLY_FILLED', 'CANCELLED')
 
+---
 ## Setup Instructions
 
-### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn
+### **Prerequisites**
+-   Node.js (v16 or higher)
+-   npm or yarn
+-   A free [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register) account
+-   A free [Clerk](https://clerk.com/sign-up) account
 
-### Backend Setup
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
+### **Backend Setup**
+1.  Navigate to the `backend` directory:
+    ```bash
+    cd backend
+    ```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Create a `.env` file in the `backend` root and add the following variables:
+    ```env
+    PORT=3001
+    MONGO_URI=your_mongodb_atlas_connection_string
+    CLERK_SECRET_KEY=your_clerk_secret_key
+    CLIENT_URL=http://localhost:5173
+    ```
+4.  Start the backend server:
+    ```bash
+    npm start
+    ```
+    The backend will run on `http://localhost:3001`.
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+### **Frontend Setup**
+1.  Navigate to the `frontend` directory:
+    ```bash
+    cd frontend
+    ```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Create a `.env.local` file in the `frontend` root and add your Clerk Publishable Key:
+    ```env
+    VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+    ```
+4.  Start the development server:
+    ```bash
+    npm run dev
+    ```
+    The frontend will run on `http://localhost:5173`.
 
-3. Initialize the database:
-   ```bash
-   npm run init-db
-   ```
-
-4. Start the backend server:
-   ```bash
-   npm run dev
-   ```
-
-The backend will run on `http://localhost:3001`
-
-### Frontend Setup
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-The frontend will run on `http://localhost:5173`
-
-## Usage
-
-### For Users
-1. **View Markets**: See available prediction markets and current prices
-2. **Place Bids**: Choose YES or NO, enter quantity, and place your bet
-3. **Real-time Updates**: Watch prices and volumes change as others trade
-4. **Track Balance**: Monitor your virtual coin balance
-
-### For Admins
-1. **Market Management**: Create and manage prediction markets
-2. **Resolution**: Resolve markets when outcomes are known
-3. **Automatic Payouts**: System automatically distributes winnings
-
+---
 ## API Endpoints
 
-### Markets
-- `GET /api/markets` - List all markets
-- `GET /api/markets/:id` - Get specific market details
-- `POST /api/place-bid` - Place a new bid
-- `POST /api/resolve-market` - Resolve a market
+All routes (except `/api/users/register`) are protected and require authentication.
 
-### Users
-- `GET /api/users/:id` - Get user information
+### **Markets**
+-   `GET /api/markets`: List all available markets.
+-   `GET /api/markets/:marketId`: Get details for a specific market.
+-   `POST /api/markets/resolve`: (Admin) Resolve a market and trigger payouts.
 
+### **Orders**
+-   `POST /api/orders/place`: Place a new order.
+-   `GET /api/orders/:marketId`: Get the public order book for a market.
+-   `GET /api/orders/my-orders`: Get all orders for the logged-in user.
+
+### **Users**
+-   `POST /api/users/register`: Creates a user in the database after they sign up with Clerk.
+-   `GET /api/users/me`: Get the logged-in user's profile from the database.
+
+---
 ## WebSocket Events
 
-### Client → Server
-- `connect` - Establish connection
-- `disconnect` - Handle disconnection
-
-### Server → Client
-- `market-update` - Real-time market data updates
-- `user-update` - User balance updates
-- `market-resolved` - Market resolution notifications
-
-## Pricing Model
-
-The system uses a simple bonding curve where:
-- Price = Volume of Option / Total Volume
-- Prices automatically adjust as trading volume changes
-- Higher volume on one side increases its price
-
-## Demo Data
-
-The system comes with sample data:
-- **Users**: demo_user, test_user (both start with 1000 coins)
-- **Markets**: Sample prediction questions about weather and cryptocurrency
-
-## Development
-
-### Project Structure
-```
-NxtWin/
-├── backend/
-│   ├── server.js          # Main server file
-│   ├── init-db.js         # Database initialization
-│   ├── package.json       # Backend dependencies
-│   └── nxtwin.db         # SQLite database (created on init)
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx        # Main React component
-│   │   ├── App.css        # Component styles
-│   │   └── main.jsx       # React entry point
-│   ├── package.json       # Frontend dependencies
-│   └── index.html         # HTML template
-└── README.md              # This file
-```
-
-### Key Functions
-
-#### `placeBid(userId, marketId, optionChosen, quantity)`
-- Validates user balance
-- Updates market prices and volumes
-- Deducts cost from user balance
-- Emits real-time updates
-
-#### `resolveMarket(marketId, winningOption)`
-- Updates market status
-- Calculates winnings distribution
-- Updates user balances
-- Emits resolution notifications
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## License
-
-This project is open source and available under the MIT License.
-
-## Support
-
-For questions or issues, please open an issue on the GitHub repository.
+### **Server → Client**
+-   `orderbook:update`: Sent when any order is placed or filled, prompting clients to refresh the order book.
+-   `user:update`: Sent to a specific user when their balance changes.
+-   `market:resolved`: Sent when a market is resolved.
