@@ -11,7 +11,7 @@ import OrderBook from '../components/market/OrderBook';
 import UserOrders from '../components/market/UserOrders';
 // import MarketStats from '../components/market/MarketStats';
 
-const API_URL = 'http://localhost:3001';
+import { API_URL } from '../config'
 
 const MarketView = () => {
     const { marketId } = useParams();

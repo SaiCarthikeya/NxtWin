@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { API_URL } from '../config';
 
 const MyOrdersPage = () => {
     const [orders, setOrders] = useState([]);
@@ -12,7 +13,7 @@ const MyOrdersPage = () => {
         const fetchOrders = async () => {
             try {
                 const token = await getToken();
-                const res = await fetch('http://localhost:3001/api/orders/my-orders', {
+                const res = await fetch(API_URL + '/api/orders/my-orders', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();

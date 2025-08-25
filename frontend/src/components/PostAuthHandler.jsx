@@ -1,6 +1,7 @@
 // src/components/PostAuthHandler.jsx
 import React, { useEffect } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
+import { API_URL } from '../config';
 
 // This component's only job is to ensure a user exists in our DB after login.
 const PostAuthHandler = ({ children }) => {
@@ -15,14 +16,14 @@ const PostAuthHandler = ({ children }) => {
                     const token = await getToken();
 
                     // Check if the user exists in our database
-                    const checkUserRes = await fetch('http://localhost:3001/api/users/me', {
+                    const checkUserRes = await fetch(API_URL + '/api/users/me', {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
 
                     // If they don't exist (404), create them now
                     if (checkUserRes.status === 404) {
                         console.log("User not found in DB, creating now...");
-                        await fetch('http://localhost:3001/api/users/register', {
+                        await fetch(API_URL + '/api/users/register', {
                             method: 'POST',
                             headers: {
                                 'Authorization': `Bearer ${token}`,

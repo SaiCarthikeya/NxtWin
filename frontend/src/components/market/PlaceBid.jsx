@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@clerk/clerk-react'; // 1. Import the useAuth hook
+import { API_URL } from '../../config';
 
 const PlaceBid = ({ market, userId }) => {
     const { getToken } = useAuth(); // 2. Get the getToken function from the hook
@@ -24,7 +25,7 @@ const PlaceBid = ({ market, userId }) => {
         try {
             const token = await getToken(); // 3. Get the session token from Clerk
 
-            const response = await fetch('http://localhost:3001/api/orders/place', {
+            const response = await fetch(API_URL + '/api/orders/place', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

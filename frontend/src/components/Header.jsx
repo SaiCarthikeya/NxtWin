@@ -12,7 +12,7 @@ const Header = () => {
             const fetchBalance = async () => {
                 try {
                     const token = await getToken();
-                    const res = await fetch('http://localhost:3001/api/users/me', {
+                    const res = await fetch('/api/users/me', {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const userData = await res.json();

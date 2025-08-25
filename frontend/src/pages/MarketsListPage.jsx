@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { API_URL } from '../config';
 
 const MarketsListPage = () => {
     const [markets, setMarkets] = useState([]);
@@ -12,7 +13,7 @@ const MarketsListPage = () => {
     const fetchMarkets = useCallback(async () => {
         try {
             const token = await getToken(); // Get the session token from Clerk
-            const res = await fetch('http://localhost:3001/api/markets', {
+            const res = await fetch(API_URL + '/api/markets', {
                 headers: {
                     // Add the token to the Authorization header
                     'Authorization': `Bearer ${token}`
