@@ -5,7 +5,7 @@ import { SignedIn, SignedOut, UserButton, useAuth, useUser } from '@clerk/clerk-
 const Header = () => {
     const { getToken } = useAuth();
     const { isSignedIn } = useUser();
-    const [balance, setBalance] = useState(0);
+    // const [balance, setBalance] = useState(0);
 
     useEffect(() => {
         if (isSignedIn) {
@@ -43,9 +43,6 @@ const Header = () => {
             <div>
                 <SignedIn>
                     <div className="flex items-center gap-4">
-                        <div className="text-sm font-semibold text-teal-400">
-                            Balance: <span className="font-mono">₹{balance.toFixed(2)}</span>
-                        </div>
                         {/* THE USERBUTTON IS NOW BACK */}
                         <UserButton afterSignOutUrl="/" />
                     </div>
